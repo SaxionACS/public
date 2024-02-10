@@ -39,7 +39,7 @@ apt install --yes cmake git gdb valgrind build-essential
 
 echo -e "[=== Installing toolchains. This might take a while. ===]\n"
 
-apt install --yes gcc-12 g++-12 clang-14
+apt install --yes gcc-12 g++-12 clang-15
 
 echo -e "[=== Creating symbollic links to compilers. ===]\n"
 
@@ -48,7 +48,7 @@ update-alternatives --remove-all clang
 
 update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 90 --slave /usr/bin/g++ g++ /usr/bin/g++-12
 update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11
-update-alternatives --install /usr/bin/clang clang /usr/bin/clang-14 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-14
+update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-15
 
 echo -e "[=== Configuring WSL. ===]\n"
 
