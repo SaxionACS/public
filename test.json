@@ -1,0 +1,97 @@
+{
+    "Actions": [
+        {
+            "Name": "Update package list",
+            "Description": "Update package list",
+            "Steps": [
+                {
+                    "Tool": "apt",
+                    "Method": "update",
+                    "Arguments": ""
+                }
+            ]
+        },
+        {
+            "Name": "Upgrade packages",
+            "Description": "Upgrade packages",
+            "Tool": "apt",
+            "Method": "upgrade",
+            "Arguments": "-y"
+        },
+        {
+            "Name": "Install basic dev packages",
+            "Description": "Install basic development packages",
+            "Steps": [
+                {
+                    "Tool": "apt",
+                    "Method": "install",
+                    "Arguments": "-y",
+                    "Packages": ["gdb", "build-essential", "valgrind", "git", "gcc-12", "g++-12", "ninja-build"]
+                }
+            ]
+        },
+        {
+            "Name": "Install CMake",
+            "Description": "Install CMake, gcovr, colorlog, pygments, etc. using pip3",
+            "Steps": [
+                {
+                    "Tool": "apt",
+                    "Method": "purge",
+                    "Arguments": "-y",
+                    "Packages": ["cmake"]
+                },
+                {
+                    "Tool": "apt",
+                    "Method": "install",
+                    "Arguments": "-y",
+                    "Packages": ["python3", "python3-pip"]
+                },
+                {
+                    "Tool": "pip3",
+                    "Method": "install",
+                    "Packages": ["cmake", "gcovr", "colorlog", "pygments"]
+                }
+            ]
+        },
+        {
+            "Name": "Install clang tools",
+            "Description": "Install clang tools",
+            "Steps": [
+                {
+                    "Tool": "apt",
+                    "Method": "install",
+                    "Arguments": "-y",
+                    "Packages": ["wget", "unzip", "gnupg2"]
+
+                },
+                {
+                    "Tool": "wget",
+                    "Method": "download",
+                    "Arguments": "https://apt.llvm.org/llvm.sh"
+                },
+                {
+                    "Tool": "bash",
+                    "Method": "execute",
+                    "Arguments": "llvm.sh 12"
+                },
+                {
+                    "Tool": "apt",
+                    "Method": "install",
+                    "Arguments": "-y",
+                    "Packages": ["clang-tidy-12", "clang-format-12", "clang-12", "lldb-12"]
+                }
+                
+            ]
+
+        }
+
+    ],
+
+    "Recipes": {
+        "DevTools": {
+            "Name": "DevTools",
+            "Description": "Install basic development tools",
+            "Actions": ["Remove old Cmake", "Install basic dev packages", "Install CMake"]
+        }
+    }
+}

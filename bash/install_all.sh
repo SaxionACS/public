@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "This script installs the 'clang' and 'gcc' toolchains, and some basic dev tools."
-echo "It also configures the wsl to support filesystem metadata."
+echo "This script installs multiple tools needed for C/C++ development, writing technical documentation and programming Raspberry Pi Pico."
+echo "It also configures the WSL to support filesystem metadata (if run under WSL)."
 
 while true; do
     read -p "Do you want to continue? (y/n) " yn
@@ -30,8 +30,10 @@ fi
 
 echo -e "[=== Upgrading the system. ===]\n"
 
+
 apt update
 apt upgrade --yes
+apt install --yes --no-install-recommends jq
 
 echo -e "[=== Installing basic tools and build essentials. ===]\n"
 
