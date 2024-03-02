@@ -38,10 +38,25 @@ echo "You can choose what toolsets you want to install."
 #         }
 #     }
 
+# Install jq if not installed, no output to the terminal
+# If already installed upgrade it if needed
+printf "Checking for installed tools, please wait..."
+
+if (! command -v jq > /dev/null); then
+  echo "Installing jq..."
+  sudo apt install --yes --no-install-recommends jq > /dev/null
+else
+  echo "jq is already installed. Checking for updates..."
+  sudo apt-get install --yes --no-install-recommends --only-upgrade jq > /dev/null
+fi
+
+# Print options to the user
 json_file="test.json"
 
 index=1
 recipes=("Exit")
+
+printf "\nPlease select a recipe to run:\n"
 
 for key in $(jq -r '.Recipes | keys[]' "$json_file"); do
   name=$(jq -r --arg key "$key" '.Recipes[$key].Name' "$json_file")
@@ -54,6 +69,7 @@ done
 
 echo -e "\n0: EXIT\n"
 
+# Ask the user to select a recipe
 read -p "Enter the number of the recipe you want to use: " selection
 
 if [ "$selection" -eq 0 ]; then
@@ -61,10 +77,9 @@ if [ "$selection" -eq 0 ]; then
   exit
 fi
 
-# echo "Recipes: ${recipes[@]}"
 selected_recipe=${recipes[$selection]}
 
-
+# Get the actions for the selected recipe
 readarray actions < <(jq -r --arg selected_recipe "$selected_recipe" '.Recipes[$selected_recipe].Actions[]' "$json_file")
 
 printf "\nActions for %s:\n" "$selected_recipe"
@@ -73,5 +88,4 @@ for action in "${actions[@]}"; do
   printf "  * %s" "$action"
 done
 
-# tool=$(jq -r '.tool+" "+.method' data.json)
-# echo "Using: $tool"
+# Run actions for the selected recipe
