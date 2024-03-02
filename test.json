@@ -63,23 +63,8 @@
                     "Arguments": "-y",
                     "Packages": ["wget", "unzip", "gnupg2"]
 
-                },
-                {
-                    "Tool": "wget",
-                    "Method": "download",
-                    "Arguments": "https://apt.llvm.org/llvm.sh"
-                },
-                {
-                    "Tool": "bash",
-                    "Method": "execute",
-                    "Arguments": "llvm.sh 12"
-                },
-                {
-                    "Tool": "apt",
-                    "Method": "install",
-                    "Arguments": "-y",
-                    "Packages": ["clang-tidy-12", "clang-format-12", "clang-12", "lldb-12"]
                 }
+
                 
             ]
 
@@ -89,9 +74,14 @@
 
     "Recipes": {
         "DevTools": {
-            "Name": "DevTools",
-            "Description": "Install basic development tools",
-            "Actions": ["Remove old Cmake", "Install basic dev packages", "Install CMake"]
+            "Name": "Dev tools",
+            "Description": "Installs basic development tools.",
+            "Actions": ["Update package list", "Remove old Cmake", "Install basic dev packages", "Install CMake"]
+        },
+        "PicoTool": {
+            "Name": "Pico tools",
+            "Description": "Installs Pico SDK, arm compiler and other tools needed for RPi Pico development.",
+            "Actions": ["Update package list", "Install Pico SDK", "Install Pimoroni SDK", "Install Pico tools"]
         }
     }
 }
