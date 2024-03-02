@@ -2,7 +2,7 @@
     "Actions": [
         {
             "Name": "Update package list",
-            "Description": "Update package list",
+            "Description": "Updates apt package list",
             "Steps": [
                 {
                     "Tool": "apt",
@@ -13,14 +13,14 @@
         },
         {
             "Name": "Upgrade packages",
-            "Description": "Upgrade packages",
+            "Description": "Upgrades apt packages",
             "Tool": "apt",
             "Method": "upgrade",
             "Arguments": "-y"
         },
         {
             "Name": "Install basic dev packages",
-            "Description": "Install basic development packages",
+            "Description": "Installs basic development packages",
             "Steps": [
                 {
                     "Tool": "apt",
@@ -32,7 +32,7 @@
         },
         {
             "Name": "Install CMake",
-            "Description": "Install CMake, gcovr, colorlog, pygments, etc. using pip3",
+            "Description": "Installs CMake, gcovr, colorlog, pygments, etc. using pip3",
             "Steps": [
                 {
                     "Tool": "apt",
@@ -55,7 +55,7 @@
         },
         {
             "Name": "Install clang tools",
-            "Description": "Install clang tools",
+            "Description": "Installs clang tools",
             "Steps": [
                 {
                     "Tool": "apt",
@@ -63,7 +63,42 @@
                     "Arguments": "-y",
                     "Packages": ["wget", "unzip", "gnupg2"]
 
+                },
+                {
+                    "Tool": "gpg",
+                    "Method": "add-keyring",
+                    "Source": "https://apt.llvm.org/llvm-snapshot.gpg.key",
+                    "Arguments": "--dearmor",
+                    "Output": "llvm-snapshot-keyring.gpg"
+                },
+                {
+                    "Tool": "apt",
+                    "Method": "add-repository",
+                    "Arguments": "deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${CLANG_VERSION} main",
+                    "SignedBy": "llvm-snapshot-keyring.gpg",
+                    "Output": "llvm-toolchain.list",
+                    "Arch": "amd64"
+                },
+                {
+                    "Tool": "Action",
+                    "Method": "Update package list"
+                },
+                {
+                    "Tool": "apt",
+                    "Method": "install",
+                    "Arguments": "-y",
+                    "Packages": ["clang-${CLANG_VERSION}", 
+                                "clangd-${CLANG_VERSION}", 
+                                "clang-tools-${CLANG_VERSION}", 
+                                "clang-tidy-${CLANG_VERSION}", 
+                                "clang-format-${CLANG_VERSION}", 
+                                "lldb-${CLANG_VERSION}", 
+                                "lld-${CLANG_VERSION}", 
+                                "ibc++-${CLANG_VERSION}-dev",
+                                "libc++abi-${CLANG_VERSION}-dev"]
                 }
+                
+
 
                 
             ]
