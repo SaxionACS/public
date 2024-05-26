@@ -98,7 +98,7 @@ If you don't have it open, open the Ubuntu terminal by searching for `Ubuntu` in
 1. Run the following command to download a script that installs development tools on Ubuntu:
 
     ```bash
-    wget -O - https://raw.githubusercontent.com/SaxionACS/public/main/bash/install_all.sh 
+    wget https://raw.githubusercontent.com/SaxionACS/public/main/bash/install_all.sh 
     ```
 
 2. Run the downloaded script by running the following command, passing the `--all` flag. You will need to enter the password you created during the installation of Ubuntu:
