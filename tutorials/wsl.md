@@ -58,7 +58,7 @@ On the first run, you will be prompted to create a username and password. You ca
 
 When you enter the password, it will not show any characters on the screen. This is normal for security reasons.
 
-![Ubuntu Installation](wsl_02.PNG)
+![Ubuntu Installation](wsl_02.png)
 
 ### Installing VS Code
 
