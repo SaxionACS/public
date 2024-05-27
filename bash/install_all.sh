@@ -30,8 +30,8 @@ install_dev_tools() {
 update_links(){
     echo -e "[=== Creating symbollic links to compilers. ===]\n"
 
-    update-alternatives --remove-all gcc
-    update-alternatives --remove-all clang
+    update-alternatives --remove-all --force --quiet gcc
+    update-alternatives --remove-all --force --quiet clang
 
     if [ "$1" = true ]; then
         update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 90 --slave /usr/bin/g++ g++ /usr/bin/g++-13
@@ -94,17 +94,18 @@ install_cmake() {
     fi
 }
 
-pico_dir="$HOME/pico"
 
 
 install_pico() {
     echo -e "[=== Installing RPi pico tools. ===]\n"
 
+    pico_dir="$real_user_home/pico"
+    sudo -u "$real_user" mkdir -p $pico_dir
+
     apt install --yes automake autoconf build-essential texinfo libtool libftdi-dev libusb-1.0-0-dev
 
     if [ "$1" = true ]; then
         echo -e "[=== Installing the latest version of RPi pico tools. ===]\n"
-        mkdir -p $pico_dir
         wget -qO - "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-$(uname -m)-arm-none-eabi.tar.xz" | tar --exclude='*arm-none-eabi-gdb*' --exclude='share' --strip-components=1 -xJC $pico_dir/gcc-arm-none-eabi
         # add the toolchain to the path in bashrc
         echo "export ARM_NONE_EABI_TOOLCHAIN=$pico_dir/gcc-arm-none-eabi" >> ~/.bashrc
@@ -120,6 +121,7 @@ install_pico() {
 
     #remember the current directory
     current_dir=$(pwd)
+    
 
     for repo in sdk examples extras playground
     do
@@ -129,12 +131,14 @@ install_pico() {
             echo "$dest already exists. Skipping $repo."
         else
             url="https://github.com/raspberrypi/pico-${repo}.git"
+            cd 
             echo "Cloning $url"
-            git clone -b master $url
+            cd $pico_dir
+            sudo -u "$real_user" git clone -b master $url
 
             # Any submodules
             cd $dest
-            git submodule update --init
+            sudo -u "$real_user" git submodule update --init
             cd ..
 
             # Define PICO_SDK_PATH in ~/.bashrc
@@ -144,7 +148,7 @@ install_pico() {
         fi
     done
 
-    source ~/.bashrc
+    sudo -u "$real_user" source ~/.bashrc
 
     # install picotool and picoprobe
     echo -e "[=== Installing picotool and picoprobe. ===]\n"
@@ -157,15 +161,16 @@ install_pico() {
         else
             url="https://github.com/raspberrypi/$repo.git"
             echo "Cloning $url"
-            git clone -b master $url
+            cd $pico_dir
+            sudo -u "$real_user" git clone -b master $url
 
             # Submodules + build
             cd $dest
-            git submodule update --init
-            mkdir -p build
+            sudo -u "$real_user" git submodule update --init
+            sudo -u "$real_user" mkdir -p build
             cd build
-            cmake ..
-            make -j$(nproc)
+            sudo -u "$real_user" cmake ..
+            sudo -u "$real_user" make -j$(nproc)
             if [ $repo == "picotool" ]; then
                 cp picotool /usr/local/bin
             fi
@@ -282,6 +287,10 @@ else
     real_user=$(whoami)
 fi
 
+# real_user_home=$(sudo -u "$real_user" sh -c 'echo $HOME')
+# real_user_home=$(bash -c "cd ~$(printf %q "$real_user") && pwd")
+real_user_home=$( getent passwd "$real_user" | cut -d: -f6 )
+
 echo -e "[=== Upgrading the system. ===]\n"
 
 apt update
@@ -313,6 +322,9 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     echo -e "[=== Configuring WSL. ===]\n"
     configure_wsl
 fi
+
+#install vs code remote server
+wget -O- https://aka.ms/install-vscode-server/setup.sh | sh
 
 #install vscode plugins
 if command -v code &> /dev/null; then
