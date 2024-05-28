@@ -166,9 +166,9 @@ install_gdb() {
         apt purge gdb-multiarch --yes
         wget -qO- https://ftp.gnu.org/gnu/gdb/gdb-14.2.tar.gz | sudo -u "$real_user" tar -xvz
         cd gdb-14.2
-        sudo -u "$real_user" ./configure --target=all
+        sudo -u "$real_user" ./configure --enable-targets=all
         sudo -u "$real_user" make -j$(nproc) CXXFLAGS="-static-libstdc++"
-        sudo -u "$real_user" make install
+        make install
         cd ..
         sudo -u "$real_user" rm -rf gdb-14.2
     else
