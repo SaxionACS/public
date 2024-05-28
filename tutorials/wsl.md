@@ -109,6 +109,14 @@ If you don't have it open, open the Ubuntu terminal by searching for `Ubuntu` in
 
     This script will take a while to run, as it installs a lot of tools and libraries necessary for development.
 
+3. Once the script finishes, run the following command to install the VS Code plugins for C/C++ development:
+
+    ```bash
+    wget -O- https://raw.githubusercontent.com/SaxionACS/public/main/bash/vscode.sh | bash
+    ```
+
+    This will install the C/C++ extension pack for Visual Studio Code.
+
 > *Info*: The `install_all.sh` script installs the following tools:
 > - `git` - a version control system
 > - `gcc` - a C compiler

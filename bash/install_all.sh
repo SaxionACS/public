@@ -107,10 +107,10 @@ install_dev_tools() {
     #if argument passed to this function is true, install the latest versions of the toolchains
     if [ "$1" = true ]; then
         apt install --yes software-properties-common
-        add-apt-repository ppa:ubuntu-toolchain-r/test
+        add-apt-repository ppa:ubuntu-toolchain-r/test --yes
 
         wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-        apt-add-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main"
+        apt-add-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" --yes
         apt -qq -y update
 
         xargs apt install --yes < <(echo "${dev_latest[@]}")
@@ -162,6 +162,8 @@ install_gdb() {
     if [ "$1" = true ]; then
         echo -e "[=== Installing gdb from sources. ===]\n"
         apt install --yes build-essential texinfo libmpfr-dev bison flex
+        apt purge gdb --yes
+        apt purge gdb-multiarch --yes
         wget -qO- https://ftp.gnu.org/gnu/gdb/gdb-14.2.tar.gz | sudo -u "$real_user" tar -xvz
         cd gdb-14.2
         sudo -u "$real_user" ./configure --target=all
