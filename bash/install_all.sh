@@ -95,26 +95,59 @@ if [ "$dev" = false ] && [ "$pico" = false ]; then
     dev=true
 fi
 
+
+#=========== Distro checks =================
+
+# a map of supported versions and codenames
+declare -A supported_versions
+supported_versions["22.04"]="jammy"
+supported_versions["24.04"]="noble"
+
+
+# Check if the distro is Ubuntu using lsb_release
+DISTRO=$(lsb_release -is)
+
+if [[ "$DISTRO" != "Ubuntu" ]]; then
+    echo "This script is only for Ubuntu"
+    exit 1
+fi
+
+VERSION=$(lsb_release -rs)
+# Check if the version is supported
+if [[ -z "${supported_versions[$VERSION]}" ]]; then
+    echo "This version of Ubuntu is not supported"
+    exit 1
+fi
+
+CODENAME="${supported_versions[$(lsb_release -rs)]}"
+
 #========== FUNCTIONS ============
 
 # toolchains installation:
-dev_stable=(gcc-12 g++-12 clang-15 lldb-15 lld-15 clang-tools-15 clang-format-15 clangd-15 clang-tidy-15 libc++-15-dev libc++abi-15-dev)
-dev_latest=(gcc-13 g++-13 clang-18 lldb-18 lld-18 clang-tools-18 clang-format-18 clangd-18 clang-tidy-18 libc++-18-dev libc++abi-18-dev)
+dev_stable=(gcc-12 g++-12 clang-18 lldb-18 lld-18 clang-tools-18 clang-format-18 clangd-18 clang-tidy-18 libc++-18-dev libc++abi-18-dev)
+dev_latest=(gcc-13 g++-13 clang-19 lldb-19 lld-19 clang-tools-19 clang-format-19 clangd-19 clang-tidy-19 libc++-19-dev libc++abi-19-dev)
+
+# add the signing key of the llvm repository
 
 # install the the toolchains
 install_dev_tools() {
     echo -e "[=== Installing toolchains. ===]\n"
+
+    # add the signing key of the llvm repository
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+
     #if argument passed to this function is true, install the latest versions of the toolchains
     if [ "$1" = true ]; then
         apt install --yes software-properties-common
         add-apt-repository ppa:ubuntu-toolchain-r/test --yes
 
-        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-        apt-add-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" --yes
+        apt-add-repository "deb http://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-19 main" --yes
         apt -qq -y update
 
         xargs apt install --yes < <(echo "${dev_latest[@]}")
     else
+        apt-add-repository "deb http://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-18 main" --yes
+        apt -qq -y update
         xargs apt install --yes < <(echo "${dev_stable[@]}")
     fi
 }
@@ -129,11 +162,11 @@ update_links(){
     if [ "$1" = true ]; then
         update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 90 --slave /usr/bin/g++ g++ /usr/bin/g++-13
         update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11
-        update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-18
+        update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-19
     else
         update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 90 --slave /usr/bin/g++ g++ /usr/bin/g++-12
         update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11
-        update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-15
+        update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-18
     fi
 }
 
