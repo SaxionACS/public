@@ -2,12 +2,29 @@
 
 
 if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-    echo "This script installs LLVM (candidate release) on Ubuntu"
-    echo "Usage: bash install_llvm.sh"
+    echo "This script installs LLVM (stable or candidate release) on Ubuntu"
+    echo "Usage: bash install_llvm.sh [stable|candidate]"
+    echo "If no argument is provided, the script will install the stable release"
     exit 0
 fi
 
-echo "This scipt will install LLVM (candidate release) on your system, do you want to continue? (y/n)"
+# Check if stable or candidate is provided, do it case-insensitively
+if [[ "${1,,}" == "candidate" ]]; then
+    echo "Installing candidate release"
+    LLVM_VERSION=19
+elif [[ "${1,,}" == "stable" ]]; then
+    echo "Installing stable release"
+    LLVM_VERSION=18
+elif [[ -n "$1" ]]; then
+    echo "Invalid argument, only stable and candidate are supported"
+    exit 1
+else
+    echo "No argument provided, installing stable release"
+    LLVM_VERSION=18
+fi
+
+
+echo "This scipt will install LLVM (version $LLVM_VERSION) on your system, do you want to continue? (y/n)"
 read -r response
 
 if [[ ! "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -20,8 +37,6 @@ if [ "$EUID" -ne 0 ]; then
     echo "Please run as root"
     exit 1
 fi
-
-LLVM_VERSION=19
 
 # a map of supported versions and codenames
 declare -A supported_versions
@@ -72,3 +87,47 @@ apt upgrade -y
 packages=(clang-$LLVM_VERSION clang-tools-$LLVM_VERSION libclang-common-$LLVM_VERSION-dev libclang-$LLVM_VERSION-dev libclang1-$LLVM_VERSION clang-format-$LLVM_VERSION python3-clang-$LLVM_VERSION clangd-$LLVM_VERSION clang-tidy-$LLVM_VERSION llvm-$LLVM_VERSION libc++-$LLVM_VERSION-dev libc++abi-$LLVM_VERSION-dev)
 
 xargs apt install --yes <<< "${packages[*]}"
+
+#========= Include what you use part =============
+
+supported_llvms=("18")
+
+if [[ ! "${supported_llvms[*]}" =~ ${LLVM_VERSION} ]]; then
+    echo "include-what-you-use is not supported for LLVM $LLVM_VERSION"
+    exit 0
+fi
+
+echo "Do you want to install include-what-you-use? (y/n)"
+
+read -r response
+
+if [[ ! "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    echo "Bye."
+    exit 0
+fi
+
+
+mkdir temp &>/dev/null
+
+echo "temp directory created"
+
+cd temp || { echo "Directory 'temp' couldn't be created."; exit 1; }
+
+apt install -y llvm-$LLVM_VERSION-dev libclang-$LLVM_VERSION-dev clang-$LLVM_VERSION
+git clone https://github.com/include-what-you-use/include-what-you-use.git
+
+cd include-what-you-use || { echo "Directory \`include-what-you-use\` not found"; exit 1; }
+
+git checkout clang_$LLVM_VERSION
+
+mkdir build &>/dev/null
+
+echo "build directory created"
+
+cd build || { echo "Directory \`build\` couldn't be created."; exit 1; }
+
+cmake -G "Unix Makefiles" -DCMAKE_PREFIX_PATH=/usr/lib/llvm-$LLVM_VERSION ..
+make -j"$(nproc)"
+make install
+cd ../..
+rm -rf temp/include-what-you-use
