@@ -131,3 +131,19 @@ make -j"$(nproc)"
 make install
 cd ../..
 rm -rf temp/include-what-you-use
+
+#final things, where does iwyu expect to find clang? and where is it actually?
+
+iwyu_expected=$(include-what-you-use -print-resource-dir 2>/dev/null | head -n1 | tr -d '\n')
+clang_actual=$(clang-"$LLVM_VERSION" --print-resource-dir 2>/dev/null)
+
+iwyu_expected_base="${iwyu_expected%%/clang*}"
+clang_actual_base="${clang_actual%%/clang*}"
+
+if [[ -z "$iwyu_expected" || -z "$clang_actual" ]]; then
+    echo "Couldn't find iwyu or clang to create a symlink"
+    exit 1
+fi
+
+mkdir -p "$iwyu_expected_base"
+ln -s "${clang_actual_base}/clang" "${iwyu_expected_base}/clang"
