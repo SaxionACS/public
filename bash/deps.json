@@ -1,0 +1,123 @@
+{
+    "soft":
+    {
+        "cmake":
+        {
+            "stable":
+            {
+                "apt_install": "cmake"
+            },
+            "latest":
+            {
+                "apt_purge": "cmake",
+                "apt_install": "cmake"
+            }
+        },
+        "git":
+        {
+            "stable":
+            {
+                "apt_install": "git"
+            },
+            "latest":
+            {
+                "apt_ppa": "ppa:git-core/ppa",
+                "apt_install": "git"
+            }
+        },
+        "gdb":
+        {
+            "stable":
+            {
+                "apt_purge": "gdb",
+                "apt_install": "gdb-multiarch"
+            },
+            "latest":
+            {
+                "apt_purge": "gdb gdb-multiarch",
+                "apt_install": "build-essential texinfo libmpfr-dev bison flex",
+                "url": "https://ftp.gnu.org/gnu/gdb/gdb-15.2.tar.gz",
+                "dir": "gdb-15.2",
+                "configure": "--enable-targets=all",
+                "make": "CXXFLAGS=\"-static-libstdc++\""
+            }
+        },
+        "ninja":
+        {
+            "stable":
+            {
+                "apt_install": "ninja-build"
+            },
+            "latest":
+            {
+                "apt_install": "ninja-build"
+            }
+        },
+        "llvm":
+        {
+            "stable":
+            {
+
+                "jammy":
+                {
+                    "version": "18",
+                    "apt_install": "clang-LLVM_VERSION clang-tools-LLVM_VERSION libclang-common-LLVM_VERSION-dev libclang-LLVM_VERSION-dev libclang1-LLVM_VERSION clang-format-LLVM_VERSION python3-clang-LLVM_VERSION clangd-LLVM_VERSION clang-tidy-LLVM_VERSION llvm-LLVM_VERSION libc++-LLVM_VERSION-dev libc++abi-LLVM_VERSION-dev" 
+                },
+
+                "noble":
+                {
+                    "version": "18",
+                    "apt_install": "clang-LLVM_VERSION clang-tools-LLVM_VERSION libclang-common-LLVM_VERSION-dev libclang-LLVM_VERSION-dev libclang1-LLVM_VERSION clang-format-LLVM_VERSION python3-clang-LLVM_VERSION clangd-LLVM_VERSION clang-tidy-LLVM_VERSION llvm-LLVM_VERSION libc++-LLVM_VERSION-dev libc++abi-LLVM_VERSION-dev" 
+                }
+
+            },
+            "latest":
+            {
+                "jammy":
+                {
+                    "version": "19",
+                    "apt_install": "clang-LLVM_VERSION clang-tools-LLVM_VERSION libclang-common-LLVM_VERSION-dev libclang-LLVM_VERSION-dev libclang1-LLVM_VERSION clang-format-LLVM_VERSION python3-clang-LLVM_VERSION clangd-LLVM_VERSION clang-tidy-LLVM_VERSION llvm-LLVM_VERSION libc++-LLVM_VERSION-dev libc++abi-LLVM_VERSION-dev" 
+                },
+
+                "noble":
+                {
+                    "version": "19",
+                    "apt_install": "clang-LLVM_VERSION clang-tools-LLVM_VERSION libclang-common-LLVM_VERSION-dev libclang-LLVM_VERSION-dev libclang1-LLVM_VERSION clang-format-LLVM_VERSION python3-clang-LLVM_VERSION clangd-LLVM_VERSION clang-tidy-LLVM_VERSION llvm-LLVM_VERSION libc++-LLVM_VERSION-dev libc++abi-LLVM_VERSION-dev" 
+                }
+            }
+        },
+        "gcc":
+        {
+            "stable":
+            {
+                "jammy":
+                {
+                    "version": "12",
+                    "apt_install": "gcc-12 g++-12",
+                    "apt_ppa": "ppa:ubuntu-toolchain-r/test"
+                },
+                "noble":
+                {
+                    "version": "13",
+                    "apt_install": "gcc-13 g++-13",
+                    "apt_ppa": "ppa:ubuntu-toolchain-r/test"
+                }
+            },
+            "latest":
+            {
+                "jammy":
+                {
+                    "version": "13",
+                    "apt_install": "gcc-13 g++-13",
+                    "apt_ppa": "ppa:ubuntu-toolchain-r/test"
+                },
+                "noble":
+                {
+                    "version": "14",
+                    "apt_install": "gcc-14 g++-14",
+                    "apt_ppa": "ppa:ubuntu-toolchain-r/test"
+                }
+            }
+        }
+    }
+}

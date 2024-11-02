@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DRY_RUN="--dry-run"
+
 #========= PRELIMINARY CHECKS AND SETUP =========
 
 # ref: https://askubuntu.com/a/30157/8698
@@ -20,60 +22,66 @@ else
     real_user=$(whoami)
 fi
 
-# real_user_home=$(sudo -u "$real_user" sh -c 'echo $HOME')
-# real_user_home=$(bash -c "cd ~$(printf %q "$real_user") && pwd")
 real_user_home=$( getent passwd "$real_user" | cut -d: -f6 )
+real_user_shell=$( getent passwd "$real_user" | cut -d: -f7 )
+
+deps_json="deps.json"
 
 #========= COMMNAD-LINE ARGUMENTS =========
 
-#default values:
+# default values:
+# install latest versions of the tools, possibly from sources
 latest=false
-dev=false
+
+# all implies dev and pico
+all=false
+# dev implies cpp, gdb, cmake, ninja
+dev=true
+# individual tools
 pico=false
+cpp=false
+gdb=false
+cmake=false
+ninja=false
+git=false
+
 help=false
-gdb_latest=false
 
 # If help requested on unknown optios passed, display help
 # check if valid flags passed
-# valid flags are -h, --help, -a, --all, -d, --dev, -p, --pico. -l, --latest can be combined with any of the other
-# check if flags and their combinations are valid:
+# -l, --latest can be combined with any of the other
+# other valid flags are:
+# -a, --all
+# -d, --dev
+# -p, --pico
+# -c, --cpp
+# -g, --gdb
+# -t, --git
+# -m, --cmake
+# -n, --ninja
+# -h, --help
 
-while [[ $# -gt 0 ]]
-    do
-    key="$1"
-    case $key in
-        -l|--latest)
-        latest=true
-        shift
-        ;;
-        -a|--all)
-        dev=true
-        pico=true
-        shift
-        ;;
-        -d|--dev)
-        dev=true
-        shift
-        ;;
-        -p|--pico)
-        pico=true
-        shift
-        ;;
-        -g|--gdb)
-        gdb_latest=true
-        shift
-        ;;
-        -h|--help)
-        help=true
-        shift
-        ;;
-        *)
-        echo "Invalid option: $1"
-        echo "Use -h or --help for help."
-        exit 1
-        ;;
+# short flags are single letter and can be combined, e.g. -a -c is equivalent to -ac
+
+# go over options, parsing long flags and short, also combined flags:
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -l|--latest) latest=true; shift ;;
+        -a|--all) all=true; dev=true; pico=true; shift ;;
+        -d|--dev) dev=true; shift ;;
+        -p|--pico) pico=true; shift ;;
+        -c|--cpp) cpp=true; shift ;;
+        -g|--gdb) gdb=true; shift ;;
+        -t|--git) git=true; shift ;;
+        -m|--cmake) cmake=true; shift ;;
+        -n|--ninja) ninja=true; shift ;;
+        -h|--help) help=true; shift ;;
+        *) echo "Unknown option: $1"; help=true; shift ;;
     esac
 done
+
+
+
 
 if [ "$help" = true ]; then
     echo "This script installs C & C++ development toolchains for native and RPi Pico enviroments."
@@ -85,14 +93,32 @@ if [ "$help" = true ]; then
     echo "  -l  --latest  Install the latest versions of the toolchains from ppa instead of the default channels."
     echo "  -a  -all      Install linux dev tools and RPi pico tools."
     echo "  -d  --dev     Install linux dev tools (default)."
+    echo "  -c  --cpp     Install C++ tools."
     echo "  -p  --pico    Install RPi pico tools."
-    echo "  -g  --gdb     Install gdb from sources."
+    echo "  -g  --gdb     Install gdb."
+    echo "  -t  --git     Install git."
+    echo "  -m  --cmake   Install cmake."
+    echo "  -n  --ninja   Install ninja."
     exit 1
 fi
 
 #if neither dev nor pico is selected, default to dev
 if [ "$dev" = false ] && [ "$pico" = false ]; then
     dev=true
+fi
+
+# if all is selected, dev and pico are implied
+if [ "$all" = true ]; then
+    dev=true
+    pico=true
+fi
+
+if [ "$dev" = true ]; then
+    cpp=true
+    gdb=true
+    cmake=true
+    ninja=true
+    git=true
 fi
 
 
@@ -121,203 +147,208 @@ fi
 
 CODENAME="${supported_versions[$(lsb_release -rs)]}"
 
+#=========== PACKAGES TO INSTALL USING apt ============
+
+# apt packages to install, this will be populated based on the options passed
+apt_purge=""
+apt_install="valgrind build-essential python3 python3-pip python3-venv "
+
+# hooks to run before and after installing a package
+declare -a hooks_pre_purge
+declare -a hooks_post_purge
+declare -a hooks_pre_install
+declare -a hooks_post_install
+
+declare -a apt_ppa
+
 #========== FUNCTIONS ============
 
-# toolchains installation:
-dev_stable=(gcc-12 g++-12 clang-18 lldb-18 lld-18 clang-tools-18 clang-format-18 clangd-18 clang-tidy-18 libc++-18-dev libc++abi-18-dev)
-dev_latest=(gcc-13 g++-13 clang-19 lldb-19 lld-19 clang-tools-19 clang-format-19 clangd-19 clang-tidy-19 libc++-19-dev libc++abi-19-dev)
-
-# add the signing key of the llvm repository
-
-# install the the toolchains
-install_dev_tools() {
-    echo -e "[=== Installing toolchains. ===]\n"
-
-    # add the signing key of the llvm repository
-    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-
-    #if argument passed to this function is true, install the latest versions of the toolchains
-    if [ "$1" = true ]; then
-        apt install --yes software-properties-common
-        add-apt-repository ppa:ubuntu-toolchain-r/test --yes
-
-        apt-add-repository "deb http://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-19 main" --yes
-        apt -qq -y update
-
-        xargs apt install --yes < <(echo "${dev_latest[@]}")
-    else
-        apt-add-repository "deb http://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-18 main" --yes
-        apt -qq -y update
-        xargs apt install --yes < <(echo "${dev_stable[@]}")
-    fi
-}
-
-# make symbolic links to the compilers
-update_links(){
-    echo -e "[=== Creating symbollic links to compilers. ===]\n"
-
-    update-alternatives --remove-all gcc --force --quiet
-    update-alternatives --remove-all clang --force --quiet
-
-    if [ "$1" = true ]; then
-        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 90 --slave /usr/bin/g++ g++ /usr/bin/g++-13
-        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11
-        update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-19
-    else
-        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 90 --slave /usr/bin/g++ g++ /usr/bin/g++-12
-        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11
-        update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 90 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-18
-    fi
-}
-
-#install vs code plugins (including arm and cortex debug)
-install_vscode_plugins() {
-    echo -e "[=== Installing VS Code remote server. ===]\n"
-    wget -O- https://aka.ms/install-vscode-server/setup.sh | sh
-
-    echo -e "[=== Installing VS Code plugins. ===]\n"
-    sudo -u "$real_user" code --install-extension ms-vscode.cpptools
-    sudo -u "$real_user" code --install-extension ms-vscode.cmake-tools
-    sudo -u "$real_user" code --install-extension ms-vscode.makefile-tools
-    sudo -u "$real_user" code --install-extension twxs.cmake
-    sudo -u "$real_user" code --install-extension streetsidesoftware.code-spell-checker
-    sudo -u "$real_user" code --install-extension ms-python.vscode-pylance
-    sudo -u "$real_user" code --install-extension ms-python.python
-    sudo -u "$real_user" code --install-extension ms-python.debugpy
-    sudo -u "$real_user" code --install-extension yzhang.markdown-all-in-one
-    sudo -u "$real_user" code --install-extension marus25.cortex-debug
-}
-
-
-# if argument passed to this function is true, install gdb from sources
-# else install gdb-multiarch
-install_gdb() {
-    if [ "$1" = true ]; then
-        echo -e "[=== Installing gdb from sources. ===]\n"
-        apt install --yes build-essential texinfo libmpfr-dev bison flex
-        apt purge gdb --yes
-        apt purge gdb-multiarch --yes
-        wget -qO- https://ftp.gnu.org/gnu/gdb/gdb-14.2.tar.gz | sudo -u "$real_user" tar -xvz
-        cd gdb-14.2
-        sudo -u "$real_user" ./configure --enable-targets=all
-        sudo -u "$real_user" make -j$(nproc) CXXFLAGS="-static-libstdc++"
-        make install
-        cd ..
-        sudo -u "$real_user" rm -rf gdb-14.2
-    else
-        echo -e "[=== Installing gdb. ===]\n"
-        apt install --yes gdb-multiarch
-    fi
-}
-
-# if argument passed to this function is true, install the latest version of cmake using pip
-# else install cmake from apt
 install_cmake() {
-    if [ "$1" = true ]; then
-        echo -e "[=== Installing cmake from pip. ===]\n"
-        apt purge cmake -y
-        apt install python3-pip -y
-        sudo -u "$real_user" pip3 install cmake
+    echo -e "[=== Executing install_cmake ===]\n"
+
+    local latest=$1
+    if [ "$latest" = true ]; then
+
+        apt_purge+="$(jq -r '.soft.cmake.latest.apt_purge' $deps_json) "
+        apt_install+="$(jq -r '.soft.cmake.latest.apt_install' $deps_json) "
+
+        # locally defiend manuall install function
+        cmake_setup_repos() {
+            # this is mostly a copy of the cmake install script from the official website
+            # see: https://apt.kitware.com/kitware-archive.sh
+            echo -e "[=== Setting up the Kitware repository for CMake ===]\n"
+
+            : '
+            if [ ! -f /usr/share/doc/kitware-archive-keyring/copyright ]
+            then
+                apt install -y ca-certificates gpg wget
+            fi
+
+            # install the signing key manually
+            test -f /usr/share/doc/kitware-archive-keyring/copyright || (wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - > /usr/share/keyrings/kitware-archive-keyring.gpg)
+
+            # add repo
+            echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ ${CODENAME} main" > /etc/apt/sources.list.d/kitware.list
+
+            # remove the manually added key, so the one from the kitware repo can be installed
+            apt update
+            test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
+
+            apt install -y kitware-archive-keyring
+            '
+
+        }
+
+        hooks_post_purge+=("cmake_setup_repos")
+        
     else
-        echo -e "[=== Installing cmake from apt. ===]\n"
-        apt install --yes cmake
+        # concatenate the package name to the list, the package name is the value of the key "cmake" in the deps.json file
+        apt_packages+="$(jq -r '.soft.cmake.stable.apt_install' $deps_json) "
     fi
 }
 
-install_pico() {
-    echo -e "[=== Installing RPi pico tools. ===]\n"
 
-    pico_dir="$real_user_home/pico"
-    sudo -u "$real_user" mkdir -p $pico_dir
+install_git() {
+    echo -e "[=== Executing install_git ===]\n"
 
-    apt install --yes automake autoconf build-essential texinfo libtool libftdi-dev libusb-1.0-0-dev pkg-config
+    local latest=$1
+    if [ "$latest" = true ]; then
+        apt_purge+="$(jq -r '.soft.git.latest.apt_purge' $deps_json) "
+        apt_install+="$(jq -r '.soft.git.latest.apt_install' $deps_json) "
+        # Git has a standard ppa, so we can add it directly
+        apt_ppa+="$(jq -r '.soft.git.latest.apt_ppa' $deps_json)"
 
-    if [ "$1" = true ]; then
-        echo -e "[=== Installing the latest version of RPi pico tools. ===]\n"
-        sudo -u "$real_user" mkdir -p $pico_dir/gcc-arm-none-eabi
-        wget -qO - "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-$(uname -m)-arm-none-eabi.tar.xz" | sudo -u "$real_user" tar --exclude='*arm-none-eabi-gdb*' --exclude='share' --strip-components=1 -xJC $pico_dir/gcc-arm-none-eabi
-        # add the toolchain to the path in bashrc
-        echo "export ARM_NONE_EABI_TOOLCHAIN=$pico_dir/gcc-arm-none-eabi" >> $real_user_home/.bashrc
-        echo "export PATH=\$PATH:\$ARM_NONE_EABI_TOOLCHAIN/bin" >> $real_user_home/.bashrc
-        export "ARM_NONE_EABI_TOOLCHAIN=$pico_dir/gcc-arm-none-eabi"
-        export "PATH=$PATH:$ARM_NONE_EABI_TOOLCHAIN/bin"
-        export "PICO_TOOLCHAIN_PATH=$ARM_NONE_EABI_TOOLCHAIN"
     else
-        echo -e "[=== Installing the stable version of RPi pico tools. ===]\n"
-        apt install --yes gcc-arm-none-eabi libnewlib-arm-none-eabi
+        apt_install+="$(jq -r '.soft.git.stable.apt_install' $deps_json) "
+    fi
+}
+
+install_gdb() {
+    echo -e "[=== Executing install_gdb ===]\n"
+
+    local latest=$1
+    if [ "$latest" = true ]; then
+        apt_purge+="$(jq -r '.soft.gdb.latest.apt_purge' $deps_json) "
+        apt_install+="$(jq -r '.soft.gdb.latest.apt_install' $deps_json) "
+        gdb_install_from_sources() {
+            echo -e "[=== Installing gdb from sources ===]\n"
+            : '           
+            wget -qO- "$( jq -r '.soft.gdb.latest.url' $deps_json )" | sudo -u "$real_user" tar -xvz
+            cd "$( jq -r '.soft.gdb.latest.dir' $deps_json )"
+            sudo -u "$real_user" ./configure "$( jq -r '.soft.gdb.latest.configure' $deps_json )"
+            sudo -u "$real_user" make -j$(nproc) "$( jq -r '.soft.gdb.latest.make' $deps_json )"
+            make install
+            cd ..
+            sudo -u "$real_user" rm -rf "$( jq -r '.soft.gdb.latest.dir' $deps_json )"
+            '
+        }
+
+        hooks_post_install+=("gdb_install_from_sources")
+
+    else
+        apt_purge+="$(jq -r '.soft.gdb.stable.apt_purge' $deps_json) "
+        apt_install+="$(jq -r '.soft.gdb.stable.apt_install' $deps_json) "
+    fi
+}
+
+install_ninja() {
+    echo -e "[=== Executing install_ninja ===]\n"
+    local latest=$1
+    if [ "$latest" = true ]; then
+        apt_install+="$(jq -r '.soft.ninja.latest.apt_install' $deps_json) "
+    else
+        apt_install+="$(jq -r '.soft.ninja.stable.apt_install' $deps_json) "
+    fi
+}
+
+install_llvm(){
+    echo -e "[=== Executing install_llvm ===]\n"
+    local latest=$1
+
+    local LLVM_VERSION=
+    if [ "$latest" = true ]; then
+        LLVM_VERSION=$(jq -r ".soft.llvm.latest.\"$CODENAME\".version" $deps_json)
+    else
+        LLVM_VERSION=$(jq -r ".soft.llvm.stable.\"$CODENAME\".version" $deps_json)
     fi
 
-    echo -e "[=== Installing the pico-sdk. ===]\n"
+    echo -e "[=== LLVM_VERSION: $LLVM_VERSION ===]\n"	
 
-    #remember the current directory
-    current_dir=$(pwd)
+    # if latest is true or CODENAME is "jammy", add llvm apt repos:
+    if [ "$latest" = true ] || [ "$CODENAME" = "jammy" ]; then
+        llvm_add_apt_repo(){
+
+            local LLVM_VERSION=$1
+
+            echo -e "[=== Adding LLVM apt repository for llvm-$LLVM_VERSION ===]\n"
+
+            : '
+            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+            apt-add-repository -y "deb http://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-$LLVM_VERSION main"
+            '
+        }
+
+        hooks_post_purge+=("llvm_add_apt_repo $LLVM_VERSION")
+    fi
     
 
-    for repo in sdk examples extras playground
-    do
-        dest="$pico_dir/pico-$repo"
+    if [ "$latest" = true ] || [ "$CODENAME" = "jammy" ]; then
+        packages="$(jq -r ".soft.llvm.latest.\"$CODENAME\".apt_install" $deps_json | sed "s/LLVM_VERSION/$LLVM_VERSION/g") "
+        apt_install+="$packages"
+    else
+        packages="$(jq -r ".soft.llvm.stable.\"$CODENAME\".apt_install" $deps_json | sed "s/LLVM_VERSION/$LLVM_VERSION/g") "
+        apt_install+="$packages"
+    fi
 
-        if [ -d $dest ]; then
-            echo "$dest already exists. Skipping $repo."
-        else
-            url="https://github.com/raspberrypi/pico-${repo}.git"
-            cd 
-            echo "Cloning $url"
-            cd $pico_dir
-            sudo -u "$real_user" git clone -b master $url
+    llvm_update_alternatives(){
+        local LLVM_VERSION=$1
+        echo -e "[=== Setting up llvm alternatives for llvm-$LLVM_VERSION ===]\n"
+        : '
+        update-alternatives --remove-all clang --force --quiet
+        update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$LLVM_VERSION 100
+        update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$LLVM_VERSION 100
+        update-alternatives --install /usr/bin/clangd clangd /usr/bin/clangd-$LLVM_VERSION 100
+        update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-$LLVM_VERSION 100
+        update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-$LLVM_VERSION 100
+        '
+    }
 
-            # Any submodules
-            cd $dest
-            sudo -u "$real_user" git submodule update --init
-            cd ..
+    hooks_post_install+=("llvm_update_alternatives $LLVM_VERSION")
 
-            # Define PICO_SDK_PATH in ~/.bashrc
-            varname="PICO_${repo^^}_PATH"
-            echo "export $varname=$dest" >> $real_user_home/.bashrc
-            export "${varname}=$dest"
-        fi
-    done
-
-
-    # install picotool and picoprobe
-    echo -e "[=== Installing picotool and picoprobe. ===]\n"
-    for repo in picoprobe picotool
-    do
-        dest="$pico_dir/$repo"
-
-        if [ -d $dest ]; then
-            echo "$dest already exists. Skipping $repo."
-        else
-            url="https://github.com/raspberrypi/$repo.git"
-            echo "Cloning $url"
-            cd $pico_dir
-            sudo -u "$real_user" git clone -b master $url
-
-            # Submodules + build
-            cd $dest
-            sudo -u "$real_user" git submodule update --init
-            sudo -u "$real_user" mkdir -p build
-            cd build
-            sudo -E -u "$real_user" cmake ..
-            sudo -E -u "$real_user" make -j$(nproc)
-            if [ $repo == "picotool" ]; then
-                cp picotool /usr/local/bin
-            fi
-        fi
-    done
-
-    cd $current_dir
 }
 
-configure_wsl(){
-    echo -e "[=== Configuring WSL. ===]\n"
-    touch /etc/wsl.conf
+install_gcc() {
+    echo -e "[=== Executing install_gcc ===]\n"
+    local latest=$1
+    if [ "$latest" = true ]; then
+        apt_ppa+="$(jq -r ".soft.gcc.latest.\"$CODENAME\".apt_ppa" $deps_json)"
+        apt_install+="$(jq -r ".soft.gcc.latest.\"$CODENAME\".apt_install" $deps_json) "
+    else
+        apt_ppa+="$(jq -r ".soft.gcc.stable.\"$CODENAME\".apt_ppa" $deps_json)"
+        apt_install+="$(jq -r ".soft.gcc.stable.\"$CODENAME\".apt_install" $deps_json) "
+    fi
 
-    #enable automount with metadata and systemd
-    echo -e "[automount]\nenabled = true\nnoptions = \"metadata\"" >> /etc/wsl.conf
-    echo -e "[boot]\nsystemd = true" >> /etc/wsl.conf
+    local GCC_VERSION=
+    if [ "$latest" = true ]; then
+        GCC_VERSION=$(jq -r ".soft.gcc.latest.\"$CODENAME\".version" $deps_json)
+    else
+        GCC_VERSION=$(jq -r ".soft.gcc.stable.\"$CODENAME\".version" $deps_json)
+    fi
+
+    gcc_update_alternatives(){
+
+        local GCC_VERSION=$1
+
+        echo -e "[=== Setting up gcc alternatives for gcc-$GCC_VERSION===]\n"
+        : '
+        update-alternatives --remove-all gcc --force --quiet
+        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$GCC_VERSION 100
+        update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$GCC_VERSION 100
+        '
+    }
+
+    hooks_post_install+=("gcc_update_alternatives $GCC_VERSION")
 }
-
 
 echo "This script installs the 'clang' and 'gcc' toolchains, and some basic dev tools."
 echo "It also configures the wsl to support filesystem metadata."
@@ -333,37 +364,57 @@ done
 
 echo -e "[=== Upgrading the system. ===]\n"
 
-apt -qq -y update
-apt upgrade --yes --quiet
-
+# apt -qq -y update
+# apt upgrade --yes --quiet $DRY_RUN
+# apt install -y software-properties-common jq $DRY_RUN
 
 echo -e "[=== Installing basic tools and build essentials. ===]\n"
 
-apt install --yes  git valgrind build-essential python3 python3-pip
-install_gdb $gdb_latest
-install_cmake $latest
+# install_cmake $latest
+# install_git $latest
+# install_gdb $latest
+install_llvm $latest
+install_gcc $latest
 
-if [ "$dev" = true ]; then
-    install_dev_tools $latest
-    update_links $latest
-fi
+echo -e "[=== Pre-purge hooks ===]\n"
+for hook in "${hooks_pre_purge[@]}"; do
+    eval $hook
+done
 
+echo -e "[=== Purging packages: $apt_purge ===]\n"
 
-#install pico-sdk and tools
+# repalce all ' null ' values with a single space
+apt_purge=$(echo $apt_purge | sed 's/ null / /g')
 
-if [ "$pico" = true ]; then
-    install_pico $latest
-fi
+echo -e "[=== Purging packages: $apt_purge ===]\n"
+apt purge -y $apt_purge $DRY_RUN
 
+echo -e "[=== Post-purge hooks ===]\n"
+for hook in "${hooks_post_purge[@]}"; do
+    eval $hook
+done
 
-#if running under wsl, configure it
-if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
-    configure_wsl
-fi
+echo -e "[=== Adding PPAs ===]\n"
+for ppa in $apt_ppa; do
+    echo "Adding PPA: $ppa"
+    add-apt-repository -y $ppa $DRY_RUN
+done
 
-# check if vs code is accessible from the wsl and install the remote server
-if command -v code &> /dev/null; then
-    install_vscode_plugins
-fi
+echo -e "[=== Upgrading packages ===]\n"
+# apt update
+# apt upgrade -y $DRY_RUN
+
+echo -e "[=== Pre-install hooks ===]\n"
+for hook in "${hooks_pre_install[@]}"; do
+    eval $hook
+done
+
+echo -e "[=== Installing packages ===]\n"
+# apt install -y $apt_install $DRY_RUN
+
+echo -e "[=== Post-install hooks ===]\n"
+for hook in "${hooks_post_install[@]}"; do
+    eval $hook
+done
 
 echo -e "[=== All done. Enjoy! ===]\n"
