@@ -118,6 +118,28 @@
                     "apt_ppa": "ppa:ubuntu-toolchain-r/test"
                 }
             }
+        },
+        "pico":
+        {
+            "stable":
+            {
+                "apt_install": "gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib automake autoconf build-essential texinfo libtool libftdi-dev libusb-1.0-0-dev pkg-config"
+            },
+            "latest":
+            {
+                "apt_install": "automake autoconf build-essential texinfo libtool libftdi-dev libusb-1.0-0-dev pkg-config",
+                "url": "https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi.tar.xz"
+            },
+            "sdk":
+            {
+                "base_url": "https://github.com/raspberrypi/pico-REPO.git",
+                "repos": ["sdk", "examples", "extras", "playground"]                
+            },
+            "probe":
+            {
+                "base_url": "https://github.com/raspberrypi/REPO.git",
+                "repos": ["picoprobe", "picotool"]
+            }
         }
     }
 }
