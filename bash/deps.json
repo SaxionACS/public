@@ -1,6 +1,10 @@
 {
     "soft":
     {
+        "default":
+        {
+            "all":["valgrind", "build-essential", "make", "python3", "python3-pip", "python3-venv", "micro", "mc"]
+        },
         "cmake":
         {
             "stable":
