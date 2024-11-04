@@ -142,7 +142,7 @@
             "probe":
             {
                 "base_url": "https://github.com/raspberrypi/REPO.git",
-                "repos": ["picoprobe", "picotool"]
+                "repos": ["picotool", "picoprobe"]
             }
         }
     }
