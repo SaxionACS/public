@@ -31,7 +31,7 @@ if [ ! -f $deps_json ]; then
     echo "Dependencies file not found. Downloading."
 
     # Download the deps.json file from the repo, exit if download fails
-    wget -q https://raw.githubusercontent.com/SaxionACS/public/main/bash/deps.json
+    sudo -u "$real_user" wget -q https://raw.githubusercontent.com/SaxionACS/public/main/bash/deps.json
     if [ ! -f $deps_json ]; then
         echo "Failed to download the dependencies file. Exiting."
         exit 1
