@@ -535,7 +535,7 @@ install_pico_tools() {
                 sudo -E -u "$real_user" cmake ..
                 sudo -E -u "$real_user" make -j$(nproc)
                 if [ $repo == "picotool" ]; then
-                    cp picotool /usr/local/bin
+                    make install
                 fi
                 
             fi
