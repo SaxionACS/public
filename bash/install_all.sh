@@ -426,9 +426,7 @@ install_pico_tools() {
         echo -e "[=== Making directories for RPi Pico tools ===]\n"
 
         local pico_dir=$1
-        : '
         sudo -u "$real_user" mkdir -p $pico_dir
-        '
     }
 
     hooks_pre_install+=("pico_make_dirs $pico_dir")
