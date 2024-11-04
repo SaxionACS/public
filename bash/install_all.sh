@@ -210,7 +210,7 @@ CODENAME="${supported_versions[$(lsb_release -rs)]}"
 
 # apt packages to install, this will be populated based on the options passed
 apt_purge=""
-apt_install="valgrind build-essential make python3 python3-pip python3-venv "
+apt_install="valgrind build-essential make python3 python3-pip python3-venv micro mc "
 
 # hooks to run before and after installing a package
 declare -a hooks_pre_purge
