@@ -158,10 +158,6 @@ if [ "$help" = true ]; then
     exit 1
 fi
 
-#if neither dev nor pico is selected, default to dev
-if [ "$dev" = false ] && [ "$pico" = false ]; then
-    dev=true
-fi
 
 # if all is selected, dev and pico are implied
 if [ "$all" = true ]; then
@@ -265,7 +261,7 @@ install_cmake() {
         
     else
         # concatenate the package name to the list, the package name is the value of the key "cmake" in the deps.json file
-        apt_packages+="$(jq -r '.soft.cmake.stable.apt_install' $deps_json) "
+        apt_install+="$(jq -r '.soft.cmake.stable.apt_install' $deps_json) "
     fi
 }
 
