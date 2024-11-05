@@ -440,9 +440,9 @@ install_pico_tools() {
 
             wget -qO - "$( jq -r '.soft.pico.latest.url' $deps_json )" | sudo -u "$real_user" tar --exclude='*arm-none-eabi-gdb*' --exclude='share' --strip-components=1 -xJC $pico_dir/gcc-arm-none-eabi
            
-            echo "export PICO_TOOLCHAIN_PATH=$pico_dir/gcc-arm-none-eabi" >> $real_user_home/.profile	
-            echo "export ARM_NONE_EABI_TOOLCHAIN=$pico_dir/gcc-arm-none-eabi" >> $real_user_home/.profile
-            echo "export PATH=\$PATH:\$ARM_NONE_EABI_TOOLCHAIN/bin" >> $real_user_home/.profile
+            echo "export PICO_TOOLCHAIN_PATH=$pico_dir/gcc-arm-none-eabi" >> $real_user_home/.bashrc	
+            echo "export ARM_NONE_EABI_TOOLCHAIN=$pico_dir/gcc-arm-none-eabi" >> $real_user_home/.bashrc
+            echo "export PATH=\$PATH:\$ARM_NONE_EABI_TOOLCHAIN/bin" >> $real_user_home/.bashrc
            
             export "ARM_NONE_EABI_TOOLCHAIN=$pico_dir/gcc-arm-none-eabi"
             export "PATH=$PATH:$ARM_NONE_EABI_TOOLCHAIN/bin"
@@ -487,7 +487,7 @@ install_pico_tools() {
 
                 # Define PICO_SDK_PATH in ~/.bashrc
                 varname="PICO_${repo^^}_PATH"
-                echo "export $varname=$dest" >> $real_user_home/.profile
+                echo "export $varname=$dest" >> $real_user_home/.bashrc
 
                 export "${varname}=$dest"
                 
@@ -565,7 +565,7 @@ while true; do
     esac
 done
 
-. "$real_user_home/.profile"
+. "$real_user_home/.bashrc"
 
 echo -e "[=== Upgrading the system. ===]\n"
 
